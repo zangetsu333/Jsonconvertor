@@ -10,7 +10,7 @@ st.write("A simple web application for formatting, validating, and converting JS
 # Layout with two columns
 col1, col2 = st.columns(2)
 
-# Input area for JSON data
+# Input area for JSON   data
 with col1:
     st.subheader("Input JSON")
     json_input = st.text_area("Paste your JSON here", height=300)
