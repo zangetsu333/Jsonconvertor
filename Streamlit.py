@@ -55,6 +55,8 @@ if st.sidebar.button("Validate JSON"):
         st.sidebar.error(f"Invalid JSON: {e}")
 
 delimiter = st.sidebar.text_input("CSV Delimiter", value=",")
+csv_result = None  # Initialize csv_result to store the CSV data for download
+
 if st.sidebar.button("Convert JSON to CSV"):
     try:
         if uploaded_file:
@@ -79,3 +81,12 @@ if st.sidebar.button("Flatten JSON"):
         output_area.text(json.dumps(flattened_data, indent=4))
     except Exception as e:
         st.sidebar.error(f"Error: {e}")
+
+# Download button for the CSV output
+if csv_result:
+    st.sidebar.download_button(
+        label="Download CSV",
+        data=csv_result,
+        file_name='output.csv',
+        mime='text/csv',
+    )
