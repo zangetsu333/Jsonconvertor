@@ -3,75 +3,79 @@ import json
 import pandas as pd
 from io import StringIO
 
-# Title and description
-st.title("JSON to CSV Tool")
-st.write("A simple web application for formatting, validating, and converting JSON data.")
+def flatten_json(nested_json, parent_key='', sep='.'):
+    """Recursively flatten a nested JSON."""
+    items = []
+    for k, v in nested_json.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_json(v, new_key, sep=sep).items())
+        elif isinstance(v, list):
+            for i, item in enumerate(v):
+                items.extend(flatten_json({f"{new_key}.{i}": item}, '', sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
+def convert_json_to_csv(flattened_data, delimiter):
+    df = pd.DataFrame([flattened_data])
+    csv_buffer = StringIO()
+    df.to_csv(csv_buffer, index=False, sep=delimiter)
+    return csv_buffer.getvalue()
+
+# Streamlit App Layout
+st.title("JSON Formatter Tool")
+
+# Sidebar for file upload
+st.sidebar.header("Upload JSON File")
+uploaded_file = st.sidebar.file_uploader("Choose a JSON file", type=["json"])
 
 # Layout with two columns
 col1, col2 = st.columns(2)
 
-# Input area for JSON   data
 with col1:
-    st.subheader("Input JSON")
-    json_input = st.text_area("Paste your JSON here", height=300)
+    st.subheader("JSON Input")
+    json_input = st.text_area("Paste your JSON here:", height=400)
 
-# Output area for results
 with col2:
     st.subheader("Output")
-    result_area = st.empty()
+    output_area = st.empty()
 
-# Buttons in between columns
-st.subheader("Actions")
-
-# File uploader
-uploaded_file = st.file_uploader("Upload a JSON file", type="json")
-if uploaded_file:
+# Buttons between columns
+st.sidebar.header("Actions")
+if st.sidebar.button("Validate JSON"):
     try:
-        json_input = uploaded_file.read().decode("utf-8")
-    except Exception as e:
-        st.error(f"Failed to read file: {e}")
-
-# Validate JSON
-if st.button("Validate JSON"):
-    try:
-        parsed_json = json.loads(json_input)
-        result_area.json(parsed_json)
-        st.success("JSON is valid!")
+        if uploaded_file:
+            json_data = json.load(uploaded_file)
+        else:
+            json_data = json.loads(json_input)
+        st.sidebar.success("JSON is valid!")
+        output_area.text(json.dumps(json_data, indent=4))
     except json.JSONDecodeError as e:
-        result_area.error("Invalid JSON")
-        st.error(f"JSON validation failed: {e}")
+        st.sidebar.error(f"Invalid JSON: {e}")
 
-# Convert JSON to CSV
-if st.button("Convert JSON to CSV"):
+delimiter = st.sidebar.text_input("CSV Delimiter", value=",")
+if st.sidebar.button("Convert JSON to CSV"):
     try:
-        parsed_json = json.loads(json_input)
-
-        # Handle nested JSON and JSON arrays
-        if isinstance(parsed_json, list):
-            df = pd.json_normalize(parsed_json)
-        elif isinstance(parsed_json, dict):
-            df = pd.json_normalize([parsed_json])
+        if uploaded_file:
+            json_data = json.load(uploaded_file)
         else:
-            st.error("Unsupported JSON format. Must be an object or array.")
-            st.stop()
-
-        # Select delimiter
-        delimiter = st.text_input("Enter a delimiter for the CSV file (default is ','):", value=",")
-        if len(delimiter) != 1:
-            st.error("Delimiter must be a single character.")
-        else:
-            csv_data = StringIO()
-            df.to_csv(csv_data, index=False, sep=delimiter)
-            csv_data.seek(0)
-
-            result_area.text(csv_data.getvalue())
-
-            # Download link
-            st.download_button(
-                label="Download CSV",
-                data=csv_data.getvalue(),
-                file_name="converted_file.csv",
-                mime="text/csv"
-            )
+            json_data = json.loads(json_input)
+        flattened_data = flatten_json(json_data)
+        csv_result = convert_json_to_csv(flattened_data, delimiter)
+        st.sidebar.success("JSON converted to CSV!")
+        output_area.text(csv_result)
     except Exception as e:
-        st.error(f"An error occurred during conversion: {e}")
+        st.sidebar.error(f"Error: {e}")
+
+if st.sidebar.button("Flatten JSON"):
+    try:
+        if uploaded_file:
+            json_data = json.load(uploaded_file)
+        else:
+            json_data = json.loads(json_input)
+        flattened_data = flatten_json(json_data)
+        st.sidebar.success("JSON flattened!")
+        output_area.text(json.dumps(flattened_data, indent=4))
+    except Exception as e:
+        st.sidebar.error(f"Error: {e}")
